@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Medical Note Summarizer</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    textarea { width: 100%; max-width: 600px; }
+    pre { background: #f4f4f4; padding: 1rem; max-width: 600px; white-space: pre-wrap; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Medical Note Summarizer</h1>
+
+  <!-- Input note -->
+  <textarea id="note" rows="10" placeholder="Paste clinical note here…"></textarea><br/>
+  <button id="summarizeBtn">Summarize</button>
+
+  <!-- Output summary -->
+  <h2>Summary</h2>
+  <pre id="output">–</pre>
+
+  <!-- Feedback section, hidden until after summarize -->
+  <div id="feedbackSection" class="hidden">
+    <h2>Feedback</h2>
+    <textarea id="feedbackText" rows="3" placeholder="Was this summary helpful? Any comments…"></textarea><br/>
+    <button id="feedbackBtn">Submit Feedback</button>
+    <p id="feedbackStatus"></p>
+  </div>
+
+  <script>
+    let lastRequestId = null;
+
+    document.getElementById('summarizeBtn').addEventListener('click', async () => {
+      const note = document.getElementById('note').value;
+      const out = document.getElementById('output');
+      const fbSec = document.getElementById('feedbackSection');
+      const fbStatus = document.getElementById('feedbackStatus');
+
+      // Reset feedback UI
+      fbSec.classList.add('hidden');
+      fbStatus.textContent = '';
+
+      out.textContent = 'Loading…';
+
+      // generate a request_id (simple timestamp+random)
+      lastRequestId = Date.now().toString() + "-" + Math.random().toString(36).substr(2,5);
+
+      try {
+        const res = await fetch('/summarize', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ text: note })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          out.textContent = `Error: ${data.detail || data.message}`;
+          return;
+        }
+        // show the summary
+        out.textContent = JSON.stringify(data, null, 2);
+
+        // reveal feedback UI
+        fbSec.classList.remove('hidden');
+      } catch (err) {
+        out.textContent = `Network error: ${err}`;
+      }
+    });
+
+    document.getElementById('feedbackBtn').addEventListener('click', async () => {
+      const fbText = document.getElementById('feedbackText').value;
+      const fbStatus = document.getElementById('feedbackStatus');
+
+      if (!fbText.trim()) {
+        fbStatus.textContent = 'Please enter some feedback.';
+        return;
+      }
+
+      fbStatus.textContent = 'Submitting…';
+
+      try {
+        const res = await fetch('/feedback', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            request_id: lastRequestId,
+            feedback: fbText
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          fbStatus.textContent = `Error: ${data.detail || data.message}`;
+        } else {
+          fbStatus.textContent = 'Thanks for your feedback!';
+          // Optionally clear the textarea
+          document.getElementById('feedbackText').value = '';
+        }
+      } catch (err) {
+        fbStatus.textContent = `Network error: ${err}`;
+      }
+    });
+  </script>
+</body>
+</html>
