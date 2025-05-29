@@ -57,6 +57,9 @@ docker run -p 8000:8000 \
   -e MODEL_NAME=gpt-4.1 \
   daniyalshahzad/med-summarizer:latest
 ```
+
+Browse to [http://localhost:8000/](http://localhost:8000/) to use the UI.
+
 ## API Reference
 
 ### GET /health
